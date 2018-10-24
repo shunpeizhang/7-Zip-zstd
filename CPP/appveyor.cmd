@@ -12,6 +12,8 @@ cd %APPVEYOR_BUILD_FOLDER%\CPP
 
 REM I am using sdk71 and 12.0 for releases... /TR
 
+goto vc12
+
 :sdk71
 set VC=sdk71
 set NEXT=vc12
