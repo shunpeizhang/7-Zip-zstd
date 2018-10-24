@@ -4,7 +4,6 @@
 #include "../../../C/Alloc.h"
 #include "../../../C/Threads.h"
 #include "../../../C/zstd/zstd.h"
-#include "../../../C/zstdmt/zstd-mt.h"
 
 #include "../../Common/Common.h"
 #include "../../Common/MyCom.h"
@@ -41,14 +40,17 @@ class CEncoder:
 {
   CProps _props;
 
+  ZSTD_CCtx* _ctx;
+  void*  _srcBuf;
+  void*  _dstBuf;
+  size_t _srcBufSize;
+  size_t _dstBufSize;
+
   UInt64 _processedIn;
   UInt64 _processedOut;
-  UInt32 _inputSize;
   UInt32 _numThreads;
 
-  ZSTDCB_CCtx *_ctx;
   HRESULT CEncoder::ErrorOut(size_t code);
-
 public:
   MY_QUERYINTERFACE_BEGIN2(ICompressCoder)
   MY_QUERYINTERFACE_ENTRY(ICompressSetCoderMt)
