@@ -159,8 +159,6 @@ ZSTD_OBJS = \
   $O\zstd_opt.obj \
 
 ZSTDMT_OBJS = \
-  $O\zstd-mt_common.obj \
-  $O\zstd-mt_decompress.obj \
   $O\zstd-mt_threading.obj \
 
 !include "../../7zip.mak"

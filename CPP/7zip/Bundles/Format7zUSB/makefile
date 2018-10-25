@@ -1,6 +1,6 @@
 PROG = 7zu.dll
 DEF_FILE = ../../Archive/Archive2.def
-CFLAGS = $(CFLAGS) -DNEED_7ZIP_GUID
+CFLAGS = $(CFLAGS) -DNEED_7ZIP_GUID -DZSTD_MULTITHREAD
 
 COMMON_OBJS = \
   $O\CRC.obj \

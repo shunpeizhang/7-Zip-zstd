@@ -1,6 +1,6 @@
 PROG = 7za.dll
 DEF_FILE = ../../Archive/Archive2.def
-CFLAGS = $(CFLAGS)
+CFLAGS = $(CFLAGS) -DZSTD_LEGACY_SUPPORT -DZSTD_MULTITHREAD
 
 COMMON_OBJS = \
   $O\CRC.obj \
