@@ -1,4 +1,4 @@
-// (C) 2016 Tino Reichardt
+// (C) 2016 - 2018 Tino Reichardt
 
 #define ZSTD_STATIC_LINKING_ONLY
 #include "../../../C/Alloc.h"
@@ -50,7 +50,6 @@ class CEncoder:
   UInt64 _processedOut;
   UInt32 _numThreads;
 
-  HRESULT CEncoder::ErrorOut(size_t code);
 public:
   MY_QUERYINTERFACE_BEGIN2(ICompressCoder)
   MY_QUERYINTERFACE_ENTRY(ICompressSetCoderMt)

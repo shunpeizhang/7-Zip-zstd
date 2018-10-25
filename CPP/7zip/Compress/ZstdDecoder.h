@@ -1,4 +1,4 @@
-// (C) 2016 Tino Reichardt
+// (C) 2016 - 2018 Tino Reichardt
 
 #define ZSTD_STATIC_LINKING_ONLY
 #include "../../../C/Alloc.h"
@@ -66,7 +66,6 @@ class CDecoder:public ICompressCoder,
   UInt64 _processedOut;
   UInt32 _numThreads;
 
-  HRESULT CDecoder::ErrorOut(size_t code);
   HRESULT CodeSpec(ISequentialInStream *inStream, ISequentialOutStream *outStream, ICompressProgressInfo *progress);
   HRESULT SetOutStreamSizeResume(const UInt64 *outSize);
 public:

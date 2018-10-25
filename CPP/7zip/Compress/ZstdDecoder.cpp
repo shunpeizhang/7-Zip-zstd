@@ -1,4 +1,4 @@
-// (C) 2016 Tino Reichardt
+// (C) 2016 - 2018 Tino Reichardt
 
 #include "StdAfx.h"
 #include "ZstdDecoder.h"
@@ -27,18 +27,6 @@ CDecoder::~CDecoder()
     MyFree(_srcBuf);
     MyFree(_dstBuf);
   }
-}
-
-HRESULT CDecoder::ErrorOut(size_t code)
-{
-  const char *strError = ZSTD_getErrorName(code);
-  wchar_t wstrError[200+5]; /* no malloc here, /TR */
-
-  mbstowcs(wstrError, strError, 200);
-  MessageBoxW(0, wstrError, L"7-Zip ZStandard", MB_ICONERROR | MB_OK);
-  MyFree(wstrError);
-
-  return S_FALSE;
 }
 
 STDMETHODIMP CDecoder::SetDecoderProperties2(const Byte * prop, UInt32 size)

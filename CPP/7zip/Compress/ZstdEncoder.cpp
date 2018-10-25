@@ -1,4 +1,6 @@
-// (C) 2016 Tino Reichardt
+// (C) 2016 - 2018 Tino Reichardt
+
+#define DEBUG 0
 
 #if DEBUG
 #include <stdio.h>
@@ -32,18 +34,6 @@ CEncoder::~CEncoder()
     MyFree(_srcBuf);
     MyFree(_dstBuf);
   }
-}
-
-HRESULT CEncoder::ErrorOut(size_t code)
-{
-  const char *strError = ZSTD_getErrorName(code);
-  wchar_t wstrError[200+5]; /* no malloc here, /TR */
-
-  mbstowcs(wstrError, strError, 200);
-  MessageBoxW(0, wstrError, L"7-Zip ZStandard", MB_ICONERROR | MB_OK);
-  MyFree(wstrError);
-
-  return E_INVALIDARG;
 }
 
 STDMETHODIMP CEncoder::SetCoderProperties(const PROPID * propIDs, const PROPVARIANT * coderProps, UInt32 numProps)
@@ -111,23 +101,19 @@ STDMETHODIMP CEncoder::Code(ISequentialInStream *inStream,
     _dstBuf = MyAlloc(_dstBufSize);
     if (!_dstBuf)
       return E_OUTOFMEMORY;
+
+    err = ZSTD_CCtx_setParameter(_ctx, ZSTD_p_compressionLevel, _props._level);
+    if (ZSTD_isError(err)) return E_FAIL;
+
+    err = ZSTD_CCtx_setParameter(_ctx, ZSTD_p_nbWorkers, _numThreads);
+    if (ZSTD_isError(err)) return E_FAIL;
+
+    err = ZSTD_CCtx_setParameter(_ctx, ZSTD_p_contentSizeFlag, 1);
+    if (ZSTD_isError(err)) return E_FAIL;
+
+    err = ZSTD_CCtx_setParameter(_ctx, ZSTD_p_enableLongDistanceMatching, 1);
+    if (ZSTD_isError(err)) return E_FAIL;
   }
-
-  err = ZSTD_CCtx_setParameter(_ctx, ZSTD_p_contentSizeFlag, 1);
-  if (ZSTD_isError(err))
-    return ErrorOut(err);
-
-  err = ZSTD_CCtx_setParameter(_ctx, ZSTD_p_checksumFlag, 1);
-  if (ZSTD_isError(err))
-    return ErrorOut(err);
-
-  err = ZSTD_CCtx_setParameter(_ctx, ZSTD_p_compressionLevel, _props._level);
-  if (ZSTD_isError(err))
-    return ErrorOut(err);
-
-  err = ZSTD_CCtx_setParameter(_ctx, ZSTD_p_nbWorkers, _numThreads);
-  if (ZSTD_isError(err))
-    return ErrorOut(err);
 
   for (;;) {
 
@@ -150,8 +136,7 @@ STDMETHODIMP CEncoder::Code(ISequentialInStream *inStream,
         inBuff = { NULL, srcSize, 0 };
 
       err = ZSTD_compress_generic(_ctx, &outBuff, &inBuff, ZSTD_todo);
-      if (ZSTD_isError(err))
-        return ErrorOut(err);
+      if (ZSTD_isError(err)) return E_FAIL;
 
 #if DEBUG
       printf("err=%u ", (unsigned)err);
