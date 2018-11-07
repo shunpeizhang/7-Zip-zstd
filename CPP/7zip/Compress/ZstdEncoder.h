@@ -49,6 +49,7 @@ class CEncoder:
   UInt64 _processedIn;
   UInt64 _processedOut;
   UInt32 _numThreads;
+  HANDLE _hMutex;
 
 public:
   MY_QUERYINTERFACE_BEGIN2(ICompressCoder)

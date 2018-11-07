@@ -156,6 +156,7 @@ COMPRESS_OBJS = $(COMPRESS_OBJS) \
   $O\ZstdDecoder.obj \
   $O\ZstdEncoder.obj \
   $O\ZstdRegister.obj \
+  $O\FastLzma2Register.obj \
 
 BROTLI_OBJS = \
   $O/br_backward_references.obj \
@@ -241,5 +242,19 @@ ZSTDMT_OBJS = \
   $O\lz5-mt_compress.obj \
   $O\lz5-mt_decompress.obj \
   $O\zstd-mt_threading.obj \
+
+FASTLZMA2_OBJS = \
+  $O\fl2_error_private.obj \
+  $O\fl2pool.obj \
+  $O\fl2threading.obj \
+  $O\fl2_common.obj \
+  $O\fl2_compress.obj \
+  $O\lzma2_enc.obj \
+  $O\radix_bitpack.obj \
+  $O\radix_mf.obj \
+  $O\radix_struct.obj \
+  $O\range_enc.obj \
+
+
 
 !include "../../7zip.mak"

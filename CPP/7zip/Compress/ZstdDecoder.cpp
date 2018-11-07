@@ -1,5 +1,11 @@
 // (C) 2016 - 2018 Tino Reichardt
 
+#define DEBUG 0
+
+#if DEBUG
+#include <stdio.h>
+#endif
+
 #include "StdAfx.h"
 #include "ZstdDecoder.h"
 
@@ -13,9 +19,7 @@ CDecoder::CDecoder():
   _srcBufSize(ZSTD_DStreamInSize()),
   _dstBufSize(ZSTD_DStreamOutSize()),
   _processedIn(0),
-  _processedOut(0),
-  _numThreads(NWindows::NSystem::GetNumberOfProcessors())
-
+  _processedOut(0)
 {
   _props.clear();
 }
@@ -37,18 +41,10 @@ STDMETHODIMP CDecoder::SetDecoderProperties2(const Byte * prop, UInt32 size)
   case 3:
   case 5:
     memcpy(&_props, pProps, sizeof (DProps));
+    return S_OK;
   default:
     return E_NOTIMPL;
   }
-}
-
-STDMETHODIMP CDecoder::SetNumberOfThreads(UInt32 numThreads)
-{
-  const UInt32 kNumThreadsMax = ZSTD_THREAD_MAX;
-  if (numThreads < 1) numThreads = 1;
-  if (numThreads > kNumThreadsMax) numThreads = kNumThreadsMax;
-  _numThreads = numThreads;
-  return S_OK;
 }
 
 HRESULT CDecoder::SetOutStreamSizeResume(const UInt64 * /*outSize*/)
@@ -67,6 +63,10 @@ STDMETHODIMP CDecoder::SetOutStreamSize(const UInt64 * outSize)
 HRESULT CDecoder::CodeSpec(ISequentialInStream * inStream,
   ISequentialOutStream * outStream, ICompressProgressInfo * progress)
 {
+  size_t srcBufLen, result;
+  ZSTD_inBuffer zIn;
+  ZSTD_outBuffer zOut;
+
   /* 1) create context */
   if (!_ctx) {
     _ctx = ZSTD_createDCtx();
@@ -84,35 +84,74 @@ HRESULT CDecoder::CodeSpec(ISequentialInStream * inStream,
     ZSTD_resetDStream(_ctx);
   }
 
+  zIn.src = _srcBuf;
+  zIn.size = _srcBufSize;
+  zIn.pos = 0;
+
+  zOut.dst = _dstBuf;
+  srcBufLen = _srcBufSize;
+
+  /* read first input block */
+  RINOK(ReadStream(inStream, _srcBuf, &srcBufLen));
+  _processedIn += srcBufLen;
+
+  /* Main decompression Loop */
   for (;;) {
-    size_t size = _srcBufSize;
-    RINOK(ReadStream(inStream, _srcBuf, &size));
     for (;;) {
-      ZSTD_inBuffer  inBuff = { _srcBuf, size, 0 };
-      ZSTD_outBuffer outBuff= { _dstBuf, _dstBufSize, 0 };
-      size_t const readSizeHint = ZSTD_decompressStream(_ctx, &outBuff, &inBuff);
+      /* decompress loop */
+      zOut.size = _dstBufSize;
+      zOut.pos = 0;
 
-      if (ZSTD_isError(readSizeHint))
-          return E_FAIL;
-
-      /* write decompressed data */
-      RINOK(WriteStream(outStream, _dstBuf, outBuff.pos));
-      _processedOut += outBuff.pos;
-      RINOK(progress->SetRatioInfo(&_processedIn, &_processedOut));
-
-      if (inBuff.pos > 0) {
-        memmove(_srcBuf, (char*)_srcBuf + inBuff.pos, inBuff.size - inBuff.pos);
-        size = _srcBufSize - inBuff.pos;
-        RINOK(ReadStream(inStream, (char*)_srcBuf + inBuff.pos, &size));
+      result = ZSTD_decompressStream(_ctx, &zOut, &zIn);
+      if (ZSTD_isError(result)) {
+        return E_FAIL;
       }
 
-      if (inBuff.size != inBuff.pos)
-          return E_FAIL;
+#if DEBUG
+      printf("res       =%u\n", (unsigned)result);
+      printf("zIn.size  =%u\n", (unsigned)zIn.size);
+      printf("zIn.pos   =%u\n", (unsigned)zIn.pos);
+      printf("zOut.size =%u\n", (unsigned)zOut.size);
+      printf("zOut.pos  =%u\n", (unsigned)zOut.pos);
+      fflush(stdout);
+#endif
 
-      /* eof */
-      if (readSizeHint == 0)
-        return S_OK;
-    }
+      /* write decompressed result */
+      if (zOut.pos) {
+        RINOK(WriteStream(outStream, _dstBuf, zOut.pos));
+        _processedOut += zOut.pos;
+        RINOK(progress->SetRatioInfo(&_processedIn, &_processedOut));
+      }
+
+      /* one more round */
+      if ((zIn.pos == zIn.size) && (result == 1) && zOut.pos)
+        continue;
+
+      /* finished with buffer */
+      if (zIn.pos == zIn.size)
+        break;
+
+      /* end of frame */
+      if (result == 0) {
+        result = ZSTD_resetDStream(_ctx);
+        if (ZSTD_isError(result))
+          return E_FAIL;
+        /* read next input, or eof */
+        break;
+      }
+    } /* for() decompress */
+
+    /* read next input */
+    srcBufLen = _srcBufSize;
+    RINOK(ReadStream(inStream, _srcBuf, &srcBufLen));
+    _processedIn += srcBufLen;
+
+    /* finished */
+    if (srcBufLen == 0)
+      return S_OK;
+
+    zIn.size = srcBufLen;
+    zIn.pos = 0;
   }
 }
 
@@ -136,6 +175,11 @@ STDMETHODIMP CDecoder::ReleaseInStream()
   return S_OK;
 }
 #endif
+
+STDMETHODIMP CDecoder::SetNumberOfThreads(UInt32 /* numThreads */)
+{
+  return S_OK;
+}
 
 HRESULT CDecoder::CodeResume(ISequentialOutStream * outStream, const UInt64 * outSize, ICompressProgressInfo * progress)
 {

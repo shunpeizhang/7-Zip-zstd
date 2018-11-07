@@ -25,6 +25,7 @@ CEncoder::CEncoder():
   _numThreads(NWindows::NSystem::GetNumberOfProcessors())
 {
   _props.clear();
+  _hMutex = CreateMutex(NULL, FALSE, NULL);
 }
 
 CEncoder::~CEncoder()
@@ -33,6 +34,7 @@ CEncoder::~CEncoder()
     ZSTD_freeCCtx(_ctx);
     MyFree(_srcBuf);
     MyFree(_dstBuf);
+    CloseHandle(_hMutex);
   }
 }
 
@@ -102,15 +104,19 @@ STDMETHODIMP CEncoder::Code(ISequentialInStream *inStream,
     if (!_dstBuf)
       return E_OUTOFMEMORY;
 
+    /* setup level */
     err = ZSTD_CCtx_setParameter(_ctx, ZSTD_p_compressionLevel, _props._level);
     if (ZSTD_isError(err)) return E_FAIL;
 
+    /* setup thread count */
     err = ZSTD_CCtx_setParameter(_ctx, ZSTD_p_nbWorkers, _numThreads);
     if (ZSTD_isError(err)) return E_FAIL;
 
+    /* set the content size flag */
     err = ZSTD_CCtx_setParameter(_ctx, ZSTD_p_contentSizeFlag, 1);
     if (ZSTD_isError(err)) return E_FAIL;
 
+    /* todo: make this optional */
     err = ZSTD_CCtx_setParameter(_ctx, ZSTD_p_enableLongDistanceMatching, 1);
     if (ZSTD_isError(err)) return E_FAIL;
   }
@@ -126,14 +132,24 @@ STDMETHODIMP CEncoder::Code(ISequentialInStream *inStream,
       ZSTD_todo = ZSTD_e_end;
 
     /* compress data */
+    WaitForSingleObject(_hMutex, INFINITE);
     _processedIn += srcSize;
-    for (;;) {
-      outBuff = { _dstBuf, _dstBufSize, 0 };
+    ReleaseMutex(_hMutex);
 
-      if (ZSTD_todo == ZSTD_e_continue)
-        inBuff = { _srcBuf, srcSize, 0 };
-      else
-        inBuff = { NULL, srcSize, 0 };
+    for (;;) {
+      outBuff.dst = _dstBuf;
+      outBuff.size = _dstBufSize;
+      outBuff.pos = 0;
+
+      if (ZSTD_todo == ZSTD_e_continue) {
+        inBuff.src = _srcBuf;
+        inBuff.size = srcSize;
+        inBuff.pos = 0;
+      } else {
+        inBuff.src = 0;
+        inBuff.size = srcSize;
+        inBuff.pos = 0;
+      }
 
       err = ZSTD_compress_generic(_ctx, &outBuff, &inBuff, ZSTD_todo);
       if (ZSTD_isError(err)) return E_FAIL;
@@ -152,8 +168,10 @@ STDMETHODIMP CEncoder::Code(ISequentialInStream *inStream,
       /* write output */
       if (outBuff.pos) {
         RINOK(WriteStream(outStream, _dstBuf, outBuff.pos));
+        WaitForSingleObject(_hMutex, INFINITE);
         _processedOut += outBuff.pos;
         RINOK(progress->SetRatioInfo(&_processedIn, &_processedOut));
+        ReleaseMutex(_hMutex);
       }
 
       /* done */

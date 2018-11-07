@@ -1,9 +1,11 @@
 @echo off
 
 REM Microsoft Windows SDK 7.1    (VC=sdk71)
+REM Microsoft Visual Studio 2010 (VC=10.0)
 REM Microsoft Visual Studio 2012 (VC=11.0)
 REM Microsoft Visual Studio 2013 (VC=12.0)
 REM Microsoft Visual Studio 2015 (VC=14.0)
+REM Microsoft Visual Studio 2017 (VC=15.0)
 
 REM to many vcvarsall.cmd calls will blow it up!
 set OPATH=%PATH%
@@ -11,8 +13,6 @@ set ERRFILE=%APPVEYOR_BUILD_FOLDER%\error.txt
 cd %APPVEYOR_BUILD_FOLDER%\CPP
 
 REM I am using sdk71 and 12.0 for releases... /TR
-
-goto vc12
 
 :sdk71
 set VC=sdk71

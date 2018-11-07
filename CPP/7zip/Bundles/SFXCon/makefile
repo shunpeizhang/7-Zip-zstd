@@ -134,6 +134,7 @@ C_OBJS = \
 
 COMPRESS_OBJS = $(COMPRESS_OBJS) \
   $O\ZstdDecoder.obj \
+  $O\ZstdEncoder.obj \
   $O\ZstdRegister.obj \
 
 ZSTD_OBJS = \
@@ -157,8 +158,5 @@ ZSTD_OBJS = \
   $O\zstd_ldm.obj \
   $O\zstdmt_compress.obj \
   $O\zstd_opt.obj \
-
-ZSTDMT_OBJS = \
-  $O\zstd-mt_threading.obj \
 
 !include "../../7zip.mak"
